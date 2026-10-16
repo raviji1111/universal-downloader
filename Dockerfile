@@ -9,6 +9,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 # Hamesha latest yt-dlp nightly/master install karein taaki YouTube block na kar paye
+ENV CACHE_BUST=1
 RUN pip install --no-cache-dir --upgrade -r requirements.txt && \
     pip install --no-cache-dir --upgrade --pre "yt-dlp[default]"
 
