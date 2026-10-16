@@ -1,8 +1,7 @@
 import os
 import uuid
-import threading
 import time
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify
 import yt_dlp
 
 app = Flask(__name__)
@@ -64,60 +63,45 @@ def download_media():
     cleanup_old_files()
     data = request.get_json()
     url = data.get('url', '').strip()
-    mode = data.get('mode', 'video')        # 'video' or 'audio'
-    quality = data.get('quality', 'best')   # e.g., '1080', '720', 'best'
-    ext = data.get('format', 'mp4')         # 'mp4', 'webm', 'mkv', 'mp3', 'm4a', 'wav'
-
+    
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
-    file_id = str(uuid.uuid4())
-    output_template = os.path.join(DOWNLOAD_DIR, f"{file_id}.%(ext)s")
-
     ydl_opts = {
-        'outtmpl': output_template,
-        'noplaylist': True,
         'quiet': True,
+        'no_warnings': True,
+        'noplaylist': True,
     }
-
-    if mode == 'audio':
-        ydl_opts['format'] = 'bestaudio/best'
-        ydl_opts['postprocessors'] = [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': ext,
-            'preferredquality': '192',
-        }]
-    else:
-        if quality == 'best' or not quality.isdigit():
-            ydl_opts['format'] = 'bestvideo+bestaudio/best'
-        else:
-            ydl_opts['format'] = f'bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best'
-        ydl_opts['merge_output_format'] = ext
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
+            info = ydl.extract_info(url, download=False)
             title = info.get('title', 'video')
             safe_title = "".join([c for c in title if c.isalnum() or c in (' ', '-', '_')]).strip() or "download"
 
-        # Locate the generated output file
-        downloaded_file = None
-        for f in os.listdir(DOWNLOAD_DIR):
-            if f.startswith(file_id):
-                downloaded_file = os.path.join(DOWNLOAD_DIR, f)
-                break
+            # Direct stream link extract karna taaki server par load na pade
+            formats = info.get('formats', [])
+            direct_url = None
+            
+            # Best progressive format dhundho jisme video aur audio dono hon
+            for f in reversed(formats):
+                if f.get('url') and f.get('vcodec') != 'none' and f.get('acodec') != 'none':
+                    direct_url = f.get('url')
+                    break
+            
+            # Agar progressive na mile toh sabse aakhri available format utha lo
+            if not direct_url and formats:
+                direct_url = formats[-1].get('url')
 
-        if not downloaded_file or not os.path.exists(downloaded_file):
-            return jsonify({'error': 'Failed to process media file.'}), 500
+            if not direct_url:
+                return jsonify({'error': 'Could not extract direct download link.'}), 400
 
-        actual_ext = downloaded_file.split('.')[-1]
-        download_name = f"{safe_title}.{actual_ext}"
+            return jsonify({
+                'success': True,
+                'redirect_url': direct_url,
+                'title': safe_title
+            })
 
-        return send_file(
-            downloaded_file,
-            as_attachment=True,
-            download_name=download_name
-        )
     except Exception as e:
         return jsonify({'error': f'Download failed: {str(e)}'}), 500
 
