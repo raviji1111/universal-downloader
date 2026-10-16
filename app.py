@@ -1,7 +1,7 @@
 import os
 import uuid
 import time
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 import yt_dlp
 
 app = Flask(__name__)
@@ -9,7 +9,6 @@ DOWNLOAD_DIR = "/tmp/downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def cleanup_old_files():
-    """Deletes temporary downloaded files older than 10 minutes to prevent server crashes."""
     now = time.time()
     for f in os.listdir(DOWNLOAD_DIR):
         path = os.path.join(DOWNLOAD_DIR, f)
@@ -39,8 +38,6 @@ def get_info():
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            
-            # Gather available video resolutions
             heights = set()
             for f in info.get('formats', []):
                 if f.get('vcodec') != 'none' and f.get('height'):
@@ -63,45 +60,62 @@ def download_media():
     cleanup_old_files()
     data = request.get_json()
     url = data.get('url', '').strip()
-    
+    mode = data.get('mode', 'video')
+    quality = data.get('quality', 'best')
+    ext = data.get('format', 'mp4')
+
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
+    file_id = str(uuid.uuid4())
+    output_template = os.path.join(DOWNLOAD_DIR, f"{file_id}.%(ext)s")
+
+    # Safe options for server-side downloading and merging via FFmpeg
     ydl_opts = {
-        'quiet': True,
-        'no_warnings': True,
+        'outtmpl': output_template,
         'noplaylist': True,
+        'quiet': True,
+        'restrictfilenames': True,
     }
+
+    if mode == 'audio':
+        ydl_opts['format'] = 'bestaudio/best'
+        ydl_opts['postprocessors'] = [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': ext,
+            'preferredquality': '192',
+        }]
+    else:
+        # Render ke free tier par heavy 1080p/4K crash na ho, isliye max 720p restrict kar sakte hain ya best safe format lo
+        if quality == 'best' or not quality.isdigit() or int(quality) > 720:
+            ydl_opts['format'] = 'bestvideo[height<=720]+bestaudio/best[height<=720]/best'
+        else:
+            ydl_opts['format'] = f'bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best'
+        ydl_opts['merge_output_format'] = ext
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            info = ydl.extract_info(url, download=True)
             title = info.get('title', 'video')
             safe_title = "".join([c for c in title if c.isalnum() or c in (' ', '-', '_')]).strip() or "download"
 
-            # Direct stream link extract karna taaki server par load na pade
-            formats = info.get('formats', [])
-            direct_url = None
-            
-            # Best progressive format dhundho jisme video aur audio dono hon
-            for f in reversed(formats):
-                if f.get('url') and f.get('vcodec') != 'none' and f.get('acodec') != 'none':
-                    direct_url = f.get('url')
-                    break
-            
-            # Agar progressive na mile toh sabse aakhri available format utha lo
-            if not direct_url and formats:
-                direct_url = formats[-1].get('url')
+        downloaded_file = None
+        for f in os.listdir(DOWNLOAD_DIR):
+            if f.startswith(file_id):
+                downloaded_file = os.path.join(DOWNLOAD_DIR, f)
+                break
 
-            if not direct_url:
-                return jsonify({'error': 'Could not extract direct download link.'}), 400
+        if not downloaded_file or not os.path.exists(downloaded_file) or os.path.getsize(downloaded_file) < 100:
+            return jsonify({'error': 'Generated file is empty or failed to merge.'}), 500
 
-            return jsonify({
-                'success': True,
-                'redirect_url': direct_url,
-                'title': safe_title
-            })
+        actual_ext = downloaded_file.split('.')[-1]
+        download_name = f"{safe_title}.{actual_ext}"
 
+        return send_file(
+            downloaded_file,
+            as_attachment=True,
+            download_name=download_name
+        )
     except Exception as e:
         return jsonify({'error': f'Download failed: {str(e)}'}), 500
 
