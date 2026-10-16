@@ -18,9 +18,7 @@ def cleanup_old_files():
                 os.remove(path)
             except Exception:
                 pass
-
 def get_base_ydl_opts():
-    """Bina aggressive client spoofing ke normal options, kyunki cookies.txt ab sab handle kar lega."""
     opts = {
         'quiet': True,
         'no_warnings': True,
@@ -30,14 +28,13 @@ def get_base_ydl_opts():
         'concurrent_fragment_downloads': 8,
         'retries': 10,
         'fragment_retries': 10,
+        # Agar specific format nahi milta, toh jo best available ho wo utha lega
+        'format': 'bestvideo+bestaudio/best',
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-us,en;q=0.5',
         }
     }
     
-    # Cookies automatically detect karega
     if os.path.exists('cookies.txt'):
         opts['cookiefile'] = 'cookies.txt'
     elif os.path.exists('/etc/secrets/cookies.txt'):
