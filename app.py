@@ -9,37 +9,33 @@ DOWNLOAD_DIR = "/tmp/downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def cleanup_old_files():
-    """15 minute se purani temporary files delete karta hai taaki server full na ho."""
     now = time.time()
     for f in os.listdir(DOWNLOAD_DIR):
         path = os.path.join(DOWNLOAD_DIR, f)
         if os.path.isfile(path) and now - os.path.getmtime(path) > 900:
-            try:
-                os.remove(path)
-            except Exception:
-                pass
+            try: os.remove(path)
+            except: pass
+
 def get_base_ydl_opts():
+    """Ultra-safe options with dynamic cookie pathing"""
     opts = {
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
         'geo_bypass': True,
         'nocheckcertificate': True,
-        'concurrent_fragment_downloads': 8,
+        'concurrent_fragment_downloads': 5,
         'retries': 10,
-        'fragment_retries': 10,
-        # Agar specific format nahi milta, toh jo best available ho wo utha lega
-        'format': 'bestvideo+bestaudio/best',
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
         }
     }
     
-    if os.path.exists('cookies.txt'):
-        opts['cookiefile'] = 'cookies.txt'
-    elif os.path.exists('/etc/secrets/cookies.txt'):
-        opts['cookiefile'] = '/etc/secrets/cookies.txt'
-    
+    # Absolute path check for cookies to ensure yt-dlp reads them properly
+    cookie_path = os.path.join(os.getcwd(), 'cookies.txt')
+    if os.path.exists(cookie_path):
+        opts['cookiefile'] = cookie_path
+        
     return opts
 
 @app.route('/')
@@ -55,6 +51,9 @@ def get_info():
 
     ydl_opts = get_base_ydl_opts()
     ydl_opts['extract_flat'] = False
+    # Ensure no strict format is applied during info extraction
+    if 'format' in ydl_opts:
+        del ydl_opts['format']
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -77,19 +76,19 @@ def get_info():
                 'resolutions': sorted_heights
             })
     except Exception as e:
-        return jsonify({'error': f'Link analyze nahi ho paya. Check karein ki video public hai. ({str(e)[:120]})'}), 400
+        return jsonify({'error': f'Analyze Error: {str(e)[:150]}...'}), 400
 
 @app.route('/api/download', methods=['POST'])
 def download_media():
     cleanup_old_files()
     data = request.get_json()
     url = data.get('url', '').strip()
-    mode = data.get('mode', 'video')        # 'video' or 'audio'
-    quality = data.get('quality', 'best')   # '2160', '1080', '720', '480', '360', 'best'
-    ext = data.get('format', 'mp4')         # 'mp4', 'mkv', 'webm', 'mp3', 'm4a', 'wav', 'flac'
+    mode = data.get('mode', 'video')        
+    quality = data.get('quality', 'best')   
+    ext = data.get('format', 'mp4')         
 
     if not url:
-        return jsonify({'error': 'URL zaroori hai'}), 400
+        return jsonify({'error': 'URL is required'}), 400
 
     file_id = str(uuid.uuid4())
     output_template = os.path.join(DOWNLOAD_DIR, f"{file_id}.%(ext)s")
@@ -106,38 +105,29 @@ def download_media():
             'preferredquality': '192',
         }]
     else:
-        # Pehle single combined file dhundega (zero merge time), warna video+audio ko instant copy-merge karega
+        # ULTIMATE FALLBACK: Try requested height -> then try ANY best -> then try single file
         if quality == 'best' or not str(quality).isdigit():
-            ydl_opts['format'] = f'best[ext={ext}]/bestvideo+bestaudio/best'
+            ydl_opts['format'] = 'bestvideo+bestaudio/best'
         else:
             q = int(quality)
-            ydl_opts['format'] = (
-                f'best[height<={q}][ext={ext}]/'
-                f'bestvideo[height<={q}]+bestaudio/'
-                f'best[height<={q}]/best'
-            )
+            ydl_opts['format'] = f'bestvideo[height<={q}]+bestaudio/bestvideo+bestaudio/best'
         
         ydl_opts['merge_output_format'] = ext
-        # FFmpeg ko bolta hai ki video re-encode na kare, seedha stream copy kare (2-second merge)
-        ydl_opts['postprocessor_args'] = {
-            'merger': ['-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k'] if ext == 'mp4' else ['-c', 'copy']
-        }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             title = info.get('title', 'video')
-            safe_title = "".join([c for c in title if c.isalnum() or c in (' ', '-', '_')]).strip()[:80] or "download"
+            safe_title = "".join([c for c in title if c.isalnum() or c in (' ', '-', '_')]).strip()[:60] or "download"
 
-        # Download hui file ko locate karein (temp/part files ko chhod kar)
         downloaded_file = None
         for f in os.listdir(DOWNLOAD_DIR):
             if f.startswith(file_id) and not f.endswith(('.part', '.ytdl', '.temp')):
                 downloaded_file = os.path.join(DOWNLOAD_DIR, f)
                 break
 
-        if not downloaded_file or not os.path.exists(downloaded_file) or os.path.getsize(downloaded_file) < 1024:
-            return jsonify({'error': 'File generate nahi ho payi (0 bytes). Doosri quality ya format select karke try karein.'}), 500
+        if not downloaded_file or not os.path.exists(downloaded_file):
+            return jsonify({'error': 'File generation failed on the server.'}), 500
 
         actual_ext = downloaded_file.split('.')[-1]
         download_name = f"{safe_title}.{actual_ext}"
@@ -148,9 +138,8 @@ def download_media():
             download_name=download_name
         )
     except Exception as e:
-        return jsonify({'error': f'Download fail ho gaya: {str(e)[:150]}'}), 500
+        return jsonify({'error': f'Download fail ho gaya: {str(e)[:150]}...'}), 500
 
 if __name__ == '__main__':
-    # Railway, Koyeb, aur Render teeno ke PORT ko automatically support karta hai
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
