@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Media Downloader</title>
+    <title>Universal Pro Downloader</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-xl w-full bg-slate-800 rounded-2xl shadow-2xl p-6 border border-slate-700">
-        <h1 class="text-2xl font-bold text-center mb-2 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-            Universal Video & Audio Downloader
+<body class="bg-slate-950 text-white min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-xl w-full bg-slate-900 rounded-2xl shadow-2xl p-6 border border-slate-800">
+        <h1 class="text-2xl font-extrabold text-center mb-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-emerald-400 bg-clip-text text-transparent">
+            Universal All-Format Downloader
         </h1>
-        <p class="text-slate-400 text-center text-sm mb-6">
-            Paste any share link from YouTube, Instagram, Facebook, X, TikTok, or 1000+ sites
+        <p class="text-slate-400 text-center text-xs mb-6">
+            YouTube • Instagram • Facebook • X • Any Website (All Qualities & Formats)
         </p>
 
-        <!-- Link Input & Paste Bar -->
+        <!-- Input Box -->
         <div class="flex gap-2 mb-4">
-            <input id="urlInput" type="url" placeholder="Paste share link here..." 
-                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500">
+            <input id="urlInput" type="url" placeholder="Paste any video or audio share link..." 
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500">
             <button onclick="pasteClipboard()" 
-                class="bg-slate-700 hover:bg-slate-600 px-3 py-3 rounded-xl text-xs font-semibold shrink-0 transition">
+                class="bg-slate-800 hover:bg-slate-700 px-3 py-3 rounded-xl text-xs font-semibold shrink-0 transition">
                 Paste
             </button>
             <button onclick="fetchInfo()" id="fetchBtn"
@@ -29,52 +29,52 @@
             </button>
         </div>
 
-        <!-- Status / Error Message -->
-        <div id="statusMsg" class="hidden text-sm text-center py-2 px-4 rounded-lg mb-4"></div>
+        <!-- Status Alert -->
+        <div id="statusMsg" class="hidden text-xs text-center py-2.5 px-4 rounded-xl mb-4"></div>
 
-        <!-- Video Details & Quality Options Card -->
-        <div id="mediaCard" class="hidden bg-slate-900/70 rounded-xl p-4 border border-slate-700 space-y-4">
+        <!-- Media Options Card -->
+        <div id="mediaCard" class="hidden bg-slate-950/90 rounded-xl p-4 border border-slate-800 space-y-4">
             <div class="flex gap-4 items-center">
-                <img id="thumb" src="" alt="Thumbnail" class="w-28 h-20 object-cover rounded-lg bg-slate-800 shrink-0">
+                <img id="thumb" src="" alt="Preview" class="w-28 h-20 object-cover rounded-lg bg-slate-800 shrink-0">
                 <div class="overflow-hidden">
-                    <span id="platformBadge" class="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-medium">Platform</span>
-                    <h2 id="mediaTitle" class="font-semibold text-sm line-clamp-2 mt-1">Video Title</h2>
+                    <span id="platformBadge" class="text-[11px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-semibold uppercase">Site</span>
+                    <h2 id="mediaTitle" class="font-semibold text-sm line-clamp-2 mt-1">Title</h2>
                     <p id="mediaDuration" class="text-xs text-slate-400 mt-1"></p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800">
-                <!-- Type Selector -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-800">
+                <!-- Mode -->
                 <div>
-                    <label class="text-xs text-slate-400 block mb-1">Type</label>
-                    <select id="modeSelect" onchange="updateFormatOptions()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+                    <label class="text-xs text-slate-400 block mb-1">Download Type</label>
+                    <select id="modeSelect" onchange="updateFormatOptions()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
                         <option value="video">Video + Audio</option>
                         <option value="audio">Audio Only</option>
                     </select>
                 </div>
 
-                <!-- Quality Selector -->
+                <!-- Quality -->
                 <div id="qualityWrapper">
-                    <label class="text-xs text-slate-400 block mb-1">Quality</label>
-                    <select id="qualitySelect" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+                    <label class="text-xs text-slate-400 block mb-1">Select Quality</label>
+                    <select id="qualitySelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
                         <option value="best">Best Available</option>
                     </select>
                 </div>
 
-                <!-- Format Selector -->
+                <!-- Format -->
                 <div>
-                    <label class="text-xs text-slate-400 block mb-1">Format</label>
-                    <select id="formatSelect" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm">
-                        <option value="mp4">MP4</option>
+                    <label class="text-xs text-slate-400 block mb-1">Select Format</label>
+                    <select id="formatSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+                        <option value="mp4">MP4 (Universal)</option>
+                        <option value="mkv">MKV (HD Merge)</option>
                         <option value="webm">WEBM</option>
-                        <option value="mkv">MKV</option>
                     </select>
                 </div>
             </div>
 
             <button onclick="downloadMedia()" id="downloadBtn"
-                class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-semibold text-sm transition shadow-lg">
-                Download Now
+                class="w-full bg-emerald-600 hover:bg-emerald-500 py-3.5 rounded-xl font-bold text-sm transition shadow-lg">
+                Download File Now
             </button>
         </div>
     </div>
@@ -85,14 +85,14 @@
                 const text = await navigator.clipboard.readText();
                 document.getElementById('urlInput').value = text;
             } catch (err) {
-                showStatus('Please press Ctrl+V or long-press to paste manually.', 'error');
+                showStatus('Long-press ya Ctrl+V daba kar link paste karein.', 'error');
             }
         }
 
         function showStatus(msg, type = 'info') {
             const el = document.getElementById('statusMsg');
             el.textContent = msg;
-            el.className = `text-sm text-center py-2 px-4 rounded-lg mb-4 ${
+            el.className = `text-xs text-center py-2.5 px-4 rounded-xl mb-4 ${
                 type === 'error' ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
             }`;
             el.classList.remove('hidden');
@@ -106,18 +106,28 @@
 
             if (mode === 'audio') {
                 qualityWrapper.classList.add('opacity-40', 'pointer-events-none');
-                ['mp3', 'm4a', 'wav'].forEach(ext => {
+                [
+                    {val: 'mp3', label: 'MP3 (Standard)'},
+                    {val: 'm4a', label: 'M4A (AAC Fast)'},
+                    {val: 'wav', label: 'WAV (Lossless)'},
+                    {val: 'flac', label: 'FLAC (Studio)'},
+                    {val: 'opus', label: 'OPUS'}
+                ].forEach(item => {
                     const opt = document.createElement('option');
-                    opt.value = ext;
-                    opt.textContent = ext.toUpperCase();
+                    opt.value = item.val;
+                    opt.textContent = item.label;
                     formatSelect.appendChild(opt);
                 });
             } else {
                 qualityWrapper.classList.remove('opacity-40', 'pointer-events-none');
-                ['mp4', 'webm', 'mkv'].forEach(ext => {
+                [
+                    {val: 'mp4', label: 'MP4 (Universal)'},
+                    {val: 'mkv', label: 'MKV (Fastest HD)'},
+                    {val: 'webm', label: 'WEBM'}
+                ].forEach(item => {
                     const opt = document.createElement('option');
-                    opt.value = ext;
-                    opt.textContent = ext.toUpperCase();
+                    opt.value = item.val;
+                    opt.textContent = item.label;
                     formatSelect.appendChild(opt);
                 });
             }
@@ -125,13 +135,13 @@
 
         async function fetchInfo() {
             const url = document.getElementById('urlInput').value.trim();
-            if (!url) return showStatus('Please paste a link first!', 'error');
+            if (!url) return showStatus('Pehle koi video share link paste karein!', 'error');
 
             const btn = document.getElementById('fetchBtn');
             btn.disabled = true;
-            btn.textContent = 'Checking...';
+            btn.textContent = 'Wait...';
             document.getElementById('mediaCard').classList.add('hidden');
-            showStatus('Fetching available formats and qualities...', 'info');
+            showStatus('Link scan ho raha hai aur sabhi qualities fetch ki ja rahi hain...', 'info');
 
             try {
                 const res = await fetch('/api/info', {
@@ -146,14 +156,14 @@
                 document.getElementById('thumb').src = data.thumbnail || 'https://via.placeholder.com/150';
                 document.getElementById('mediaTitle').textContent = data.title;
                 document.getElementById('platformBadge').textContent = data.extractor;
-                document.getElementById('mediaDuration').textContent = data.duration ? `Duration: ${data.duration}` : '';
+                document.getElementById('mediaDuration').textContent = `Duration: ${data.duration}`;
 
                 const qSelect = document.getElementById('qualitySelect');
                 qSelect.innerHTML = '<option value="best">Best Available</option>';
                 (data.resolutions || []).forEach(res => {
                     const opt = document.createElement('option');
                     opt.value = res;
-                    opt.textContent = `${res}p`;
+                    opt.textContent = `${res}p ${res >= 1080 ? '(Full HD/4K)' : res == 720 ? '(HD)' : ''}`;
                     qSelect.appendChild(opt);
                 });
 
@@ -174,8 +184,8 @@
 
             const btn = document.getElementById('downloadBtn');
             btn.disabled = true;
-            btn.textContent = 'Processing & Merging (Please wait)...';
-            showStatus('Downloading and converting media on server. Large HD videos may take 15-40 seconds...', 'info');
+            btn.textContent = 'High-Speed Downloading & Merging...';
+            showStatus('Server 8x speed se video download aur merge kar raha hai. Page band na karein...', 'info');
 
             try {
                 const res = await fetch('/api/download', {
@@ -189,9 +199,8 @@
                     throw new Error(errData.error || 'Download failed');
                 }
 
-                // Extract filename and trigger browser save dialog
                 const disposition = res.headers.get('Content-Disposition');
-                let filename = `download.${format}`;
+                let filename = `video.${format}`;
                 if (disposition && disposition.includes('filename=')) {
                     filename = disposition.split('filename=')[1].replace(/"/g, '');
                 }
@@ -205,12 +214,12 @@
                 a.click();
                 a.remove();
                 window.URL.revokeObjectURL(downloadUrl);
-                showStatus('Download complete!', 'info');
+                showStatus('Download Complete! Apne browser ke Downloads folder mein check karein.', 'info');
             } catch (err) {
                 showStatus(err.message, 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Download Now';
+                btn.textContent = 'Download File Now';
             }
         }
     </script>
